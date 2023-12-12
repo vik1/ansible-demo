@@ -1,0 +1,33 @@
+trigger:
+- main
+
+jobs:
+- job: deploy_vm
+  displayName: 'Deploy Linux VM'
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core sdk'
+    inputs:
+      version: '3.x'
+      performMultiLevelLookup: true
+
+  - task: UseNode@2
+    displayName: 'Use Node.js'
+    inputs:
+      version: '16.x'
+
+  - task: InstallAnsible@1
+    displayName: 'Install Ansible'
+    inputs:
+      versionSpec: '2.9.x'
+
+  - script: 'ansible-playbook create_vm.yml'
+    displayName: 'Run Ansible Playbook'
+    env:
+      ARM_CLIENT_ID: 'cda36f61-4d59-4086-a436-c873100a7c41'
+      ARM_CLIENT_SECRET: '_vS8Q~gqvn9VjSfMu2ACIEp6vacQh6T67L7bFapv'
+      ARM_SUBSCRIPTION_ID: '2731039a-6e64-4e36-89d2-2b56169c81bc'
+      ARM_TENANT_ID: '4ec696f6-5303-4504-9c12-9d813ebfe561'

@@ -1,0 +1,57 @@
+trigger:
+- master
+
+pr:
+- '*'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroupName: 'exampleResourceGroup'
+  vmName: 'exampleVM'
+  location: 'East US'
+  adminUsername: 'your-username'
+  adminPassword: 'your-password'
+
+stages:
+- stage: Deploy
+  jobs:
+  - job: DeployInfrastructure
+    displayName: 'Deploy Infrastructure'
+    env:
+      ARM_CLIENT_ID: $(servicePrincipalId)
+      ARM_CLIENT_SECRET: $(servicePrincipalKey)
+      ARM_SUBSCRIPTION_ID: $(subscriptionId)
+      ARM_TENANT_ID: $(tenantId)
+    steps:
+    - checkout: self
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '3.x'
+        installationPath: $(Agent.ToolsDirectory)/dotnet
+      displayName: 'Install .NET SDK'
+    - task: AzureCLI@2
+      inputs:
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+          az group create --name $(resourceGroupName) --location $(location)
+    - task: TerraformTaskV2@2
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+    - task: TerraformTaskV2@2
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+    - task: Ansible@2
+      inputs:
+        playbook: '$(System.DefaultWorkingDirectory)/ansible/nginx.yml'
+        inventory: '<public-ip>,'
+        extras: '-u $(adminUsername) --ask-pass'
+        displayName: 'Run Ansible Playbook'
